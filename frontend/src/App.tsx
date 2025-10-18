@@ -14,6 +14,11 @@ import RegisterPage from '@/pages/auth/RegisterPage'
 import StudentDashboard from '@/pages/dashboard/StudentDashboard'
 import InstructorDashboard from '@/pages/dashboard/InstructorDashboard'
 import AdminDashboard from '@/pages/dashboard/AdminDashboard'
+import { CreateCoursePage } from '@/pages/instructor/CreateCoursePage'
+import { EditCoursePage } from '@/pages/instructor/EditCoursePage'
+import { CourseContentManager } from '@/pages/instructor/CourseContentManager'
+import { CourseCatalog } from '@/pages/student/CourseCatalog'
+import { CourseDetailsPage } from '@/pages/student/CourseDetailsPage'
 
 /**
  * Protected route wrapper that requires authentication.
@@ -150,41 +155,41 @@ function App() {
               path="/courses"
               element={
                 <ProtectedRoute>
-                  <div>Course List - TODO</div>
+                  <CourseCatalog />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/courses/:id"
+              path="/courses/:courseId"
               element={
                 <ProtectedRoute>
-                  <div>Course Detail - TODO</div>
+                  <CourseDetailsPage />
                 </ProtectedRoute>
               }
             />
 
             {/* Protected Routes - Instructors Only */}
             <Route
-              path="/instructor/courses"
+              path="/instructor/courses/create"
               element={
                 <ProtectedRoute requiredRole="instructor">
-                  <div>Instructor Courses - TODO</div>
+                  <CreateCoursePage />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/instructor/courses/new"
+              path="/instructor/courses/:courseId/edit"
               element={
                 <ProtectedRoute requiredRole="instructor">
-                  <div>Create Course - TODO</div>
+                  <EditCoursePage />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/instructor/courses/:id/edit"
+              path="/instructor/courses/:courseId/content"
               element={
                 <ProtectedRoute requiredRole="instructor">
-                  <div>Edit Course - TODO</div>
+                  <CourseContentManager />
                 </ProtectedRoute>
               }
             />

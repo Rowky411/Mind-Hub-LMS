@@ -6,9 +6,13 @@ Represents platform users with role-based access control (Student/Instructor/Adm
 from datetime import datetime
 from enum import Enum as PyEnum
 from sqlalchemy import String, Boolean, DateTime, Enum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typing import TYPE_CHECKING
 
 from src.models.base import Base
+
+if TYPE_CHECKING:
+    from src.models.course import Course
 
 
 class UserRole(str, PyEnum):
@@ -56,6 +60,13 @@ class User(Base):
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    courses: Mapped[list["Course"]] = relationship(
+        "Course",
+        back_populates="instructor",
+        cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         """String representation of User."""

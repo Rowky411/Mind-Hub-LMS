@@ -212,3 +212,12 @@ As defined in `.specify/memory/constitution.md`:
 ## Support
 
 For issues and questions, please refer to the documentation in `specs/` or open an issue.
+
+## Accounts
+  Instructor :
+  - Email: instructor@example.com
+  - Password: password123
+
+  Admin :
+  - Email: admin@example.com
+  - Password: admin123

@@ -10,11 +10,11 @@ api_router = APIRouter()
 
 # Import routers
 from src.api.auth import router as auth_router
+from src.api.courses import router as courses_router
+from src.api.content import router as content_router
 
 # TODO: Import additional routers as they are implemented
-# from src.api.courses import router as courses_router
 # from src.api.enrollments import router as enrollments_router
-# from src.api.lessons import router as lessons_router
 # from src.api.progress import router as progress_router
 # from src.api.assignments import router as assignments_router
 # from src.api.certificates import router as certificates_router
@@ -22,6 +22,8 @@ from src.api.auth import router as auth_router
 
 # Include routers
 api_router.include_router(auth_router)
+api_router.include_router(courses_router)
+api_router.include_router(content_router)
 
 # TODO: Include additional routers with appropriate prefixes and tags
 # api_router.include_router(users_router, prefix="/users", tags=["Users"])
