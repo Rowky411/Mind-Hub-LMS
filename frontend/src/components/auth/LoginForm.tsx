@@ -5,13 +5,12 @@
  */
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
 import { login, AuthTokens } from '../../api/auth'
-import { ApiError } from '../../api/client'
+import { useAuthStore } from '../../store/auth'
 
 interface LoginFormProps {
   onSuccess?: (data: AuthTokens) => void
-  onError?: (error: ApiError) => void
+  onError?: (error: any) => void
 }
 
 interface LoginFormData {
@@ -33,15 +32,33 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
 
   const [errors, setErrors] = useState<FormErrors>({})
   const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
-  // Login mutation
-  const loginMutation = useMutation<AuthTokens, ApiError, LoginFormData>({
-    mutationFn: login,
-    onSuccess: (data) => {
-      setErrors({})
+  // Use auth store to update global auth state
+  const updateUser = useAuthStore((state) => state.updateUser)
+  const setAuthenticated = (user: any, accessToken: string, refreshToken: string) => {
+    useAuthStore.setState({
+      user,
+      accessToken,
+      refreshToken,
+      isAuthenticated: true,
+    })
+  }
+
+  const handleLogin = async () => {
+    setIsLoading(true)
+    setErrors({})
+
+    try {
+      // Call the login API
+      const data = await login(formData)
+
+      // Update the auth store with user data and tokens
+      setAuthenticated(data.user, data.accessToken, data.refreshToken)
+
+      // Call onSuccess callback
       onSuccess?.(data)
-    },
-    onError: (error) => {
+    } catch (error: any) {
       // Clear password on error for security
       setFormData((prev) => ({ ...prev, password: '' }))
 
@@ -56,8 +73,10 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
       }
 
       onError?.(error)
-    },
-  })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -88,7 +107,7 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Clear general error
@@ -100,7 +119,7 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
     }
 
     // Submit login
-    loginMutation.mutate(formData)
+    await handleLogin()
   }
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -153,7 +172,7 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
             value={formData.email}
             onChange={handleChange}
             onBlur={handleBlur}
-            disabled={loginMutation.isPending}
+            disabled={isLoading}
             className={`
               w-full px-4 py-2 border rounded-md shadow-sm
               focus:outline-none focus:ring-2 focus:ring-blue-500
@@ -184,7 +203,7 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
               required
               value={formData.password}
               onChange={handleChange}
-              disabled={loginMutation.isPending}
+              disabled={isLoading}
               className={`
                 w-full px-4 py-2 pr-12 border rounded-md shadow-sm
                 focus:outline-none focus:ring-2 focus:ring-blue-500
@@ -197,7 +216,7 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
-              disabled={loginMutation.isPending}
+              disabled={isLoading}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? (
@@ -245,7 +264,7 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={loginMutation.isPending}
+          disabled={isLoading}
           className={`
             w-full flex justify-center py-2 px-4 border border-transparent
             rounded-md shadow-sm text-sm font-medium text-white
@@ -255,7 +274,7 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
             transition-colors duration-200
           `}
         >
-          {loginMutation.isPending ? (
+          {isLoading ? (
             <>
               <svg
                 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"

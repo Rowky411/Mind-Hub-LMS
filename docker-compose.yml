@@ -44,6 +44,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://mindhub:mindhub_dev_password@postgres:5432/mindhub_db
       REDIS_URL: redis://redis:6379/0
+      CORS_ORIGINS: http://localhost:5173,http://localhost:5174,http://localhost:3000
     ports:
       - "8000:8000"
     volumes:

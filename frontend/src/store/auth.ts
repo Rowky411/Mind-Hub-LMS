@@ -174,9 +174,10 @@ export const useAuthStore = create<AuthStore>()(
        * Logout action - clear authentication state.
        */
       logout: () => {
-        // Clear tokens from localStorage
+        // Clear tokens and user data from localStorage
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
+        localStorage.removeItem('user')
 
         // Reset state to initial
         set(initialState)

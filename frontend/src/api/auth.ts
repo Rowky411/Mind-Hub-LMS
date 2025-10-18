@@ -93,6 +93,36 @@ export interface PasswordResetConfirm {
 }
 
 /**
+ * Backend response format (snake_case).
+ */
+interface BackendAuthTokens {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  user: any
+}
+
+/**
+ * Convert snake_case user object to camelCase.
+ */
+function convertUserToCamelCase(backendUser: any): User {
+  return {
+    id: backendUser.id,
+    email: backendUser.email,
+    firstName: backendUser.first_name,
+    lastName: backendUser.last_name,
+    role: backendUser.role as UserRole,
+    bio: backendUser.bio,
+    avatarUrl: backendUser.avatar_url,
+    emailVerified: backendUser.email_verified,
+    isActive: backendUser.is_active,
+    lastLogin: backendUser.last_login,
+    createdAt: backendUser.created_at,
+    updatedAt: backendUser.updated_at,
+  }
+}
+
+/**
  * Register a new user.
  *
  * @param data - Registration data
@@ -101,7 +131,7 @@ export interface PasswordResetConfirm {
  */
 export async function register(data: RegisterData): Promise<AuthTokens> {
   try {
-    const response = await apiClient.post<AuthTokens>('/auth/register', {
+    const response = await apiClient.post<BackendAuthTokens>('/auth/register', {
       email: data.email.trim(),
       password: data.password,
       first_name: data.firstName.trim(),
@@ -109,14 +139,22 @@ export async function register(data: RegisterData): Promise<AuthTokens> {
       role: data.role || UserRole.STUDENT,
     })
 
+    // Convert snake_case to camelCase
+    const authTokens: AuthTokens = {
+      accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token,
+      tokenType: response.data.token_type,
+      user: convertUserToCamelCase(response.data.user),
+    }
+
     // Store tokens in localStorage
-    localStorage.setItem('access_token', response.data.accessToken)
-    localStorage.setItem('refresh_token', response.data.refreshToken)
+    localStorage.setItem('access_token', authTokens.accessToken)
+    localStorage.setItem('refresh_token', authTokens.refreshToken)
 
     // Also store user data for quick access
-    localStorage.setItem('user', JSON.stringify(response.data.user))
+    localStorage.setItem('user', JSON.stringify(authTokens.user))
 
-    return response.data
+    return authTokens
   } catch (error) {
     console.error('Registration error:', error)
     throw error as ApiError
@@ -132,19 +170,27 @@ export async function register(data: RegisterData): Promise<AuthTokens> {
  */
 export async function login(credentials: LoginCredentials): Promise<AuthTokens> {
   try {
-    const response = await apiClient.post<AuthTokens>('/auth/login', {
+    const response = await apiClient.post<BackendAuthTokens>('/auth/login', {
       email: credentials.email.trim(),
       password: credentials.password,
     })
 
+    // Convert snake_case to camelCase
+    const authTokens: AuthTokens = {
+      accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token,
+      tokenType: response.data.token_type,
+      user: convertUserToCamelCase(response.data.user),
+    }
+
     // Store tokens in localStorage
-    localStorage.setItem('access_token', response.data.accessToken)
-    localStorage.setItem('refresh_token', response.data.refreshToken)
+    localStorage.setItem('access_token', authTokens.accessToken)
+    localStorage.setItem('refresh_token', authTokens.refreshToken)
 
     // Also store user data for quick access
-    localStorage.setItem('user', JSON.stringify(response.data.user))
+    localStorage.setItem('user', JSON.stringify(authTokens.user))
 
-    return response.data
+    return authTokens
   } catch (error) {
     console.error('Login error:', error)
     throw error as ApiError
@@ -169,6 +215,9 @@ export async function logout(): Promise<void> {
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('user')
 
+    // IMPORTANT: Clear Zustand auth store persistence
+    localStorage.removeItem('auth-storage')
+
     // Redirect to login page
     window.location.href = '/login'
   }
@@ -185,15 +234,28 @@ export async function refreshTokens(
   refreshToken: string
 ): Promise<RefreshTokenResponse> {
   try {
-    const response = await apiClient.post<RefreshTokenResponse>('/auth/refresh', {
+    interface BackendRefreshTokenResponse {
+      access_token: string
+      refresh_token: string
+      token_type: string
+    }
+
+    const response = await apiClient.post<BackendRefreshTokenResponse>('/auth/refresh', {
       refresh_token: refreshToken,
     })
 
-    // Store new tokens
-    localStorage.setItem('access_token', response.data.accessToken)
-    localStorage.setItem('refresh_token', response.data.refreshToken)
+    // Convert snake_case to camelCase
+    const tokens: RefreshTokenResponse = {
+      accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token,
+      tokenType: response.data.token_type,
+    }
 
-    return response.data
+    // Store new tokens
+    localStorage.setItem('access_token', tokens.accessToken)
+    localStorage.setItem('refresh_token', tokens.refreshToken)
+
+    return tokens
   } catch (error) {
     console.error('Token refresh error:', error)
 

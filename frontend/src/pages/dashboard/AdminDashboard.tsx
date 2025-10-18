@@ -5,14 +5,15 @@
  * Shows system-wide statistics, user management, and administrative tools.
  */
 import { useNavigate } from 'react-router-dom'
-import { getCurrentUser, logout } from '../../api/auth'
+import { useAuthStore } from '../../store/auth'
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
-  const user = getCurrentUser()
+  const user = useAuthStore((state) => state.user)
+  const logout = useAuthStore((state) => state.logout)
 
-  const handleLogout = async () => {
-    await logout()
+  const handleLogout = () => {
+    logout()
     navigate('/login')
   }
 

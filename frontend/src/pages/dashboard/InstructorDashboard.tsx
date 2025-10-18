@@ -6,14 +6,15 @@
  */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getCurrentUser, logout } from '../../api/auth'
+import { useAuthStore } from '../../store/auth'
 import { getMyCourses } from '@/api/courses'
 import { CourseCard } from '@/components/courses/CourseCard'
 import type { Course } from '@/types/course'
 
 export default function InstructorDashboard() {
   const navigate = useNavigate()
-  const user = getCurrentUser()
+  const user = useAuthStore((state) => state.user)
+  const logout = useAuthStore((state) => state.logout)
   const [courses, setCourses] = useState<Course[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -32,8 +33,8 @@ export default function InstructorDashboard() {
     fetchCourses()
   }, [])
 
-  const handleLogout = async () => {
-    await logout()
+  const handleLogout = () => {
+    logout()
     navigate('/login')
   }
 
