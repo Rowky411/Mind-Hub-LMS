@@ -139,11 +139,11 @@
 
 ### Tests for User Story 2 (MANDATORY per Constitution VI) ⚠️
 
-- [ ] T066 [P] [US2] Contract test for POST /api/v1/courses in backend/tests/contract/test_courses_create.py
-- [ ] T067 [P] [US2] Contract test for POST /api/v1/content (multipart upload) in backend/tests/contract/test_content_upload.py
-- [ ] T068 [P] [US2] Integration test for course creation and publishing journey in backend/tests/integration/test_course_creation_journey.py
-- [ ] T069 [P] [US2] Frontend component test for CourseForm in frontend/tests/component/test_course_form.test.tsx
-- [ ] T070 [P] [US2] Frontend component test for ContentUpload in frontend/tests/component/test_content_upload.test.tsx
+- [X] T066 [P] [US2] Contract test for POST /api/v1/courses in backend/tests/contract/test_courses_create.py
+- [X] T067 [P] [US2] Contract test for POST /api/v1/content (multipart upload) in backend/tests/contract/test_content_upload.py
+- [X] T068 [P] [US2] Integration test for course creation and publishing journey in backend/tests/integration/test_course_creation_journey.py
+- [X] T069 [P] [US2] Frontend component test for CourseForm in frontend/tests/component/test_course_form.test.tsx
+- [X] T070 [P] [US2] Frontend component test for ContentUpload in frontend/tests/component/test_content_upload.test.tsx
 
 ### Backend Implementation for User Story 2
 
