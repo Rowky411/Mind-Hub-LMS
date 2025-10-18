@@ -28,13 +28,13 @@ router = APIRouter(prefix="/content", tags=["Content"])
     status_code=status.HTTP_201_CREATED
 )
 async def upload_content(
-    file: UploadFile = File(...),
     course_id: str = Form(...),
+    module_id: str = Form(...),
     title: str = Form(...),
     content_type: ContentType = Form(...),
     order_index: int = Form(...),
+    file: Optional[UploadFile] = File(None),
     description: Optional[str] = Form(None),
-    module_id: Optional[str] = Form(None),
     text_content: Optional[str] = Form(None),
     duration_seconds: Optional[int] = Form(None),
     is_required: bool = Form(True),
@@ -42,19 +42,20 @@ async def upload_content(
     db: AsyncSession = Depends(get_session),
 ):
     """
-    Upload content item (video or document).
+    Upload content item (video, document, or text).
 
     Requires instructor or admin role and course ownership.
+    Content must belong to a module.
 
     Args:
-        file: Uploaded file
         course_id: Course ID
+        module_id: Module ID (required)
         title: Content title
         content_type: Type of content
-        order_index: Position in course/module
+        order_index: Position within module
+        file: Uploaded file (required for video/document, not for text)
         description: Optional description
-        module_id: Optional module ID
-        text_content: Text content (for TEXT type)
+        text_content: Text content (required for TEXT type)
         duration_seconds: Duration (for VIDEO type)
         is_required: Whether content is required
         current_user: Authenticated user
@@ -66,7 +67,22 @@ async def upload_content(
     Raises:
         403: User not authorized
         400: Invalid file or validation error
+        422: Missing required fields
     """
+    # Validate file based on content type
+    if content_type in [ContentType.VIDEO, ContentType.DOCUMENT] and not file:
+        raise AppException(
+            status_code=400,
+            message=f"File is required for {content_type.value} content type",
+            details={"content_type": content_type.value}
+        )
+
+    if content_type == ContentType.TEXT and not text_content:
+        raise AppException(
+            status_code=400,
+            message="text_content is required for TEXT content type",
+            details={"content_type": content_type.value}
+        )
     # Build content data
     content_data = ContentItemCreate(
         course_id=course_id,
@@ -92,6 +108,34 @@ async def upload_content(
         content_item=ContentItemResponse.model_validate(content_item),
         upload_url=None  # For local storage, no pre-signed URL needed
     )
+
+
+@router.get("", response_model=list[ContentItemResponse])
+async def get_module_content(
+    module_id: str,
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    Get all content items for a module.
+
+    Args:
+        module_id: Module ID
+        db: Database session
+
+    Returns:
+        List[ContentItemResponse]: List of content items ordered by order_index
+    """
+    from sqlalchemy import select
+    from src.models.content_item import ContentItem
+
+    result = await db.execute(
+        select(ContentItem)
+        .where(ContentItem.module_id == module_id)
+        .order_by(ContentItem.order_index)
+    )
+    content_items = result.scalars().all()
+
+    return [ContentItemResponse.model_validate(item) for item in content_items]
 
 
 @router.get("/{content_id}", response_model=ContentItemResponse)

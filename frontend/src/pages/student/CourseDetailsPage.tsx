@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { ModuleList } from '@/components/courses/ModuleList'
 import { getCourse } from '@/api/courses'
+import { getCourseModules } from '@/api/modules'
 import type { CourseWithInstructor, Module } from '@/types/course'
 
 export const CourseDetailsPage = () => {
@@ -24,10 +25,12 @@ export const CourseDetailsPage = () => {
       if (!courseId) return
 
       try {
-        const courseData = await getCourse(courseId)
+        const [courseData, modulesData] = await Promise.all([
+          getCourse(courseId),
+          getCourseModules(courseId),
+        ])
         setCourse(courseData)
-        // TODO: Fetch modules when module API is implemented
-        setModules([])
+        setModules(modulesData)
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load course'
         setError(errorMessage)
@@ -146,7 +149,7 @@ export const CourseDetailsPage = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Course Content</h2>
             {modules.length > 0 ? (
-              <ModuleList modules={modules} />
+              <ModuleList modules={modules} showContent />
             ) : (
               <Card>
                 <div className="p-8 text-center">

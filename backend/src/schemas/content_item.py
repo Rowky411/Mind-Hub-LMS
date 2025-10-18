@@ -24,7 +24,7 @@ class ContentItemBase(BaseModel):
 class ContentItemCreate(ContentItemBase):
     """Schema for creating a new content item."""
     course_id: str = Field(..., description="Course ID this content belongs to")
-    module_id: Optional[str] = Field(None, description="Module ID (optional)")
+    module_id: str = Field(..., description="Module ID (required - content must belong to a module)")
 
     @field_validator('title')
     @classmethod

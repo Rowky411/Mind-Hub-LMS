@@ -13,6 +13,8 @@ from fastapi import UploadFile
 
 from src.models.content_item import ContentItem, ContentType
 from src.models.course import Course
+from src.models.module import Module
+from src.models.user import User
 from src.schemas.content_item import ContentItemCreate
 from src.core.exceptions import AppException
 from src.core.logging import get_logger
@@ -47,7 +49,7 @@ class ContentService:
 
     async def upload_content(
         self,
-        file: UploadFile,
+        file: Optional[UploadFile],
         content_data: ContentItemCreate,
         course_id: str,
         user_id: str
@@ -86,11 +88,46 @@ class ContentService:
                 message="Not authorized to upload content to this course"
             )
 
-        # Validate file
-        await self._validate_file(file, content_data.content_type)
+        # Verify module exists and belongs to this course
+        result = await self.db.execute(
+            select(Module).where(Module.id == content_data.module_id)
+        )
+        module = result.scalar_one_or_none()
 
-        # Save file
-        file_path, file_size = await self._save_file(file, course_id)
+        if not module:
+            raise AppException(
+                status_code=404,
+                message="Module not found",
+                details={"module_id": content_data.module_id}
+            )
+
+        if module.course_id != course_id:
+            raise AppException(
+                status_code=400,
+                message="Module does not belong to this course",
+                details={"module_id": content_data.module_id, "course_id": course_id}
+            )
+
+        # Initialize file-related variables
+        file_path = None
+        file_size = None
+        mime_type = None
+
+        # Only validate and save file for file-based content types
+        if content_data.content_type in [ContentType.VIDEO, ContentType.DOCUMENT]:
+            if not file:
+                raise AppException(
+                    status_code=400,
+                    message=f"File is required for {content_data.content_type.value} content",
+                    details={"content_type": content_data.content_type.value}
+                )
+
+            # Validate file
+            await self._validate_file(file, content_data.content_type)
+
+            # Save file
+            file_path, file_size = await self._save_file(file, course_id)
+            mime_type = file.content_type
 
         # Create content item
         content_item = ContentItem(
@@ -101,7 +138,7 @@ class ContentService:
             content_type=content_data.content_type,
             file_url=file_path,
             file_size=file_size,
-            mime_type=file.content_type,
+            mime_type=mime_type,
             text_content=content_data.text_content,
             duration_seconds=content_data.duration_seconds,
             order_index=content_data.order_index,
@@ -142,16 +179,12 @@ class ContentService:
 
         Args:
             content_id: Content item ID
-            include_deleted: Whether to include soft-deleted items
+            include_deleted: Whether to include soft-deleted items (not used, no soft delete)
 
         Returns:
             ContentItem or None if not found
         """
         query = select(ContentItem).where(ContentItem.id == content_id)
-
-        if not include_deleted:
-            query = query.where(ContentItem.deleted_at.is_(None))
-
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
@@ -184,16 +217,33 @@ class ContentService:
         )
         course = result.scalar_one_or_none()
 
-        if not course or course.instructor_id != user_id:
+        if not course:
+            raise AppException(
+                status_code=404,
+                message="Course not found for this content"
+            )
+
+        # Get user to check role
+        user_result = await self.db.execute(
+            select(User).where(User.id == user_id)
+        )
+        user = user_result.scalar_one_or_none()
+
+        if not user:
+            raise AppException(
+                status_code=404,
+                message="User not found"
+            )
+
+        # Allow if user is course instructor or admin
+        if course.instructor_id != user_id and not user.is_admin():
             raise AppException(
                 status_code=403,
                 message="Not authorized to delete this content"
             )
 
-        # Soft delete
-        from datetime import datetime
-        content.deleted_at = datetime.utcnow()
-
+        # Hard delete (no soft delete column exists)
+        await self.db.delete(content)
         await self.db.commit()
 
         logger.info(

@@ -11,7 +11,8 @@ import type { ContentType } from '@/types/course'
 
 interface ContentUploadProps {
   courseId: string
-  moduleId?: string
+  moduleId: string
+  moduleName: string
   onUploadComplete?: (contentId: string) => void
   onUploadError?: (error: string) => void
 }
@@ -19,6 +20,7 @@ interface ContentUploadProps {
 export const ContentUpload = ({
   courseId,
   moduleId,
+  moduleName,
   onUploadComplete,
   onUploadError,
 }: ContentUploadProps) => {
@@ -112,6 +114,10 @@ export const ContentUpload = ({
       newErrors.title = 'Title must be at least 3 characters'
     }
 
+    if (!moduleId) {
+      newErrors.module = 'Module is required for content upload'
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -127,11 +133,12 @@ export const ContentUpload = ({
     try {
       const formData = new FormData()
       formData.append('course_id', courseId)
+      formData.append('module_id', moduleId)
       formData.append('title', title.trim())
       formData.append('content_type', contentType)
       formData.append('order_index', '0') // Will be updated by reordering
 
-      if (file) {
+      if (file && contentType !== 'text') {
         formData.append('file', file)
       }
 
@@ -139,8 +146,8 @@ export const ContentUpload = ({
         formData.append('description', description.trim())
       }
 
-      if (moduleId) {
-        formData.append('module_id', moduleId)
+      if (contentType === 'text') {
+        formData.append('text_content', description || title)
       }
 
       // Simulate progress (in production, use XMLHttpRequest or axios with progress tracking)
@@ -184,7 +191,7 @@ export const ContentUpload = ({
       <form onSubmit={handleSubmit} className="space-y-6 p-6">
         <div>
           <h3 className="text-xl font-bold mb-2">Upload Content</h3>
-          <p className="text-gray-600">Add video or document content to your course</p>
+          <p className="text-gray-600">Add content to module: <strong>{moduleName}</strong></p>
         </div>
 
         {/* Content Type Selector */}

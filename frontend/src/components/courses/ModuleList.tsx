@@ -3,10 +3,12 @@
  *
  * Displays list of modules with reorder functionality.
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import type { Module } from '@/types/course'
+import { ContentList } from './ContentList'
+import { getModuleContent } from '@/api/content'
+import type { Module, ContentItem } from '@/types/course'
 
 interface ModuleListProps {
   modules: Module[]
@@ -14,7 +16,10 @@ interface ModuleListProps {
   onReorder?: (modules: Module[]) => void
   onEdit?: (module: Module) => void
   onDelete?: (moduleId: string) => void
+  onAddContent?: (module: Module) => void
+  onDeleteContent?: (contentId: string) => void
   isEditable?: boolean
+  showContent?: boolean
 }
 
 export const ModuleList = ({
@@ -23,12 +28,65 @@ export const ModuleList = ({
   onReorder,
   onEdit,
   onDelete,
+  onAddContent,
+  onDeleteContent,
   isEditable = false,
+  showContent = false,
 }: ModuleListProps) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
+  const [moduleContent, setModuleContent] = useState<Record<string, ContentItem[]>>({})
+  const [loadingContent, setLoadingContent] = useState<Set<string>>(new Set())
 
   const sortedModules = [...modules].sort((a, b) => a.order_index - b.order_index)
+
+  const toggleModule = async (moduleId: string) => {
+    const newExpanded = new Set(expandedModules)
+
+    if (newExpanded.has(moduleId)) {
+      newExpanded.delete(moduleId)
+    } else {
+      newExpanded.add(moduleId)
+
+      // Fetch content if not already loaded
+      if (!moduleContent[moduleId] && showContent) {
+        setLoadingContent(new Set(loadingContent).add(moduleId))
+        try {
+          const content = await getModuleContent(moduleId)
+          setModuleContent({ ...moduleContent, [moduleId]: content })
+        } catch (error) {
+          console.error('Failed to load module content:', error)
+        } finally {
+          const newLoading = new Set(loadingContent)
+          newLoading.delete(moduleId)
+          setLoadingContent(newLoading)
+        }
+      }
+    }
+
+    setExpandedModules(newExpanded)
+  }
+
+  // Auto-expand all modules and fetch content if showContent is true
+  useEffect(() => {
+    if (showContent && modules.length > 0) {
+      const allModuleIds = new Set(modules.map(m => m.id))
+      setExpandedModules(allModuleIds)
+
+      // Fetch content for all modules
+      modules.forEach(async (module) => {
+        if (!moduleContent[module.id]) {
+          try {
+            const content = await getModuleContent(module.id)
+            setModuleContent(prev => ({ ...prev, [module.id]: content }))
+          } catch (error) {
+            console.error(`Failed to load content for module ${module.id}:`, error)
+          }
+        }
+      })
+    }
+  }, [showContent, modules.length])
 
   const handleDragStart = (index: number) => {
     if (isEditable) {
@@ -146,31 +204,60 @@ export const ModuleList = ({
           <div className="p-4">
             <div className="flex items-start justify-between">
               {/* Module Info */}
-              <div
-                className="flex-1"
-                onClick={() => onModuleClick?.(module)}
-                role={onModuleClick ? 'button' : undefined}
-                tabIndex={onModuleClick ? 0 : undefined}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-gray-500">
-                    Module {index + 1}
-                  </span>
+              <div className="flex-1">
+                <div
+                  className={`flex items-center gap-2 mb-1 ${showContent ? 'cursor-pointer' : ''}`}
+                  onClick={() => showContent && toggleModule(module.id)}
+                >
+                  {showContent && (
+                    <svg
+                      className={`w-4 h-4 transition-transform ${
+                        expandedModules.has(module.id) ? 'transform rotate-90' : ''
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  )}
+                  <span className="text-sm font-medium text-gray-500">Module {index + 1}</span>
                   {isEditable && (
                     <span className="text-xs text-gray-400">(Drag to reorder)</span>
                   )}
+                  {showContent && moduleContent[module.id] && (
+                    <span className="text-xs text-gray-500">
+                      ({moduleContent[module.id].length} items)
+                    </span>
+                  )}
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">
-                  {module.title}
-                </h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-1">{module.title}</h3>
                 {module.description && (
                   <p className="text-sm text-gray-600">{module.description}</p>
                 )}
               </div>
 
               {/* Actions */}
-              {isEditable && (
-                <div className="flex items-center gap-2 ml-4">
+              <div className="flex items-center gap-2 ml-4">
+                {/* Add Content Button */}
+                {onAddContent && (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => onAddContent(module)}
+                  >
+                    Add Content
+                  </Button>
+                )}
+
+                {isEditable && (
+                  <>
                   {/* Move Up/Down Buttons */}
                   <div className="flex flex-col gap-1">
                     <button
@@ -244,9 +331,27 @@ export const ModuleList = ({
                       Delete
                     </Button>
                   )}
-                </div>
-              )}
+                  </>
+                )}
+              </div>
             </div>
+
+            {/* Content Items */}
+            {showContent && expandedModules.has(module.id) && (
+              <div className="mt-4 border-t pt-4">
+                {loadingContent.has(module.id) ? (
+                  <div className="pl-8 py-2">
+                    <p className="text-sm text-gray-500">Loading content...</p>
+                  </div>
+                ) : (
+                  <ContentList
+                    content={moduleContent[module.id] || []}
+                    isEditable={isEditable}
+                    onDelete={onDeleteContent}
+                  />
+                )}
+              </div>
+            )}
           </div>
         </Card>
       ))}

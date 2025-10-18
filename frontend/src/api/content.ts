@@ -19,6 +19,16 @@ export const uploadContent = async (formData: FormData): Promise<ContentItemUplo
 }
 
 /**
+ * Get all content items for a module.
+ */
+export const getModuleContent = async (moduleId: string): Promise<ContentItem[]> => {
+  const response = await apiClient.get<ContentItem[]>('/content', {
+    params: { module_id: moduleId }
+  })
+  return response.data
+}
+
+/**
  * Get content item by ID.
  */
 export const getContent = async (contentId: string): Promise<ContentItem> => {

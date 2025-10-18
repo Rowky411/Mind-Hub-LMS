@@ -9,7 +9,11 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { ContentUpload } from '@/components/courses/ContentUpload'
 import { ModuleList } from '@/components/courses/ModuleList'
+import { ModuleForm } from '@/components/courses/ModuleForm'
+import { ModuleEditForm } from '@/components/courses/ModuleEditForm'
 import { getCourse } from '@/api/courses'
+import { getCourseModules, deleteModule } from '@/api/modules'
+import { deleteContent } from '@/api/content'
 import type { Course, Module } from '@/types/course'
 
 export const CourseContentManager = () => {
@@ -20,17 +24,22 @@ export const CourseContentManager = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
-  const [selectedModule, setSelectedModule] = useState<string | undefined>(undefined)
+  const [selectedModule, setSelectedModule] = useState<Module | null>(null)
+  const [showModuleForm, setShowModuleForm] = useState(false)
+  const [showModuleEditForm, setShowModuleEditForm] = useState(false)
+  const [editingModule, setEditingModule] = useState<Module | null>(null)
 
   useEffect(() => {
     const fetchCourse = async () => {
       if (!courseId) return
 
       try {
-        const courseData = await getCourse(courseId)
+        const [courseData, modulesData] = await Promise.all([
+          getCourse(courseId),
+          getCourseModules(courseId),
+        ])
         setCourse(courseData)
-        // TODO: Fetch modules when module API is implemented
-        setModules([])
+        setModules(modulesData)
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load course'
         setError(errorMessage)
@@ -59,19 +68,47 @@ export const CourseContentManager = () => {
   }
 
   const handleModuleEdit = (module: Module) => {
-    // TODO: Implement module edit dialog
-    console.log('Edit module:', module)
+    setEditingModule(module)
+    setShowModuleEditForm(true)
   }
 
-  const handleModuleDelete = (moduleId: string) => {
-    // TODO: Call API to delete module when implemented
-    setModules((prev) => prev.filter((m) => m.id !== moduleId))
-    console.log('Delete module:', moduleId)
+  const handleModuleUpdated = (updatedModule: Module) => {
+    setModules((prev) =>
+      prev.map((m) => (m.id === updatedModule.id ? updatedModule : m))
+    )
+  }
+
+  const handleModuleDelete = async (moduleId: string) => {
+    try {
+      await deleteModule(moduleId)
+      setModules((prev) => prev.filter((m) => m.id !== moduleId))
+    } catch (err) {
+      alert('Failed to delete module')
+    }
   }
 
   const handleCreateModule = () => {
-    // TODO: Implement module creation dialog
-    console.log('Create module')
+    setShowModuleForm(true)
+  }
+
+  const handleModuleCreated = (newModule: Module) => {
+    setModules((prev) => [...prev, newModule])
+  }
+
+  const handleAddContent = (module: Module) => {
+    setSelectedModule(module)
+    setShowUpload(true)
+  }
+
+  const handleDeleteContent = async (contentId: string) => {
+    try {
+      await deleteContent(contentId)
+      // Refresh modules to update content display
+      const modulesData = await getCourseModules(courseId!)
+      setModules(modulesData)
+    } catch (err) {
+      alert('Failed to delete content')
+    }
   }
 
   if (isLoading) {
@@ -100,6 +137,28 @@ export const CourseContentManager = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Module Creation Form */}
+      <ModuleForm
+        isOpen={showModuleForm}
+        onClose={() => setShowModuleForm(false)}
+        courseId={courseId!}
+        existingModulesCount={modules.length}
+        onModuleCreated={handleModuleCreated}
+      />
+
+      {/* Module Edit Form */}
+      {editingModule && (
+        <ModuleEditForm
+          isOpen={showModuleEditForm}
+          onClose={() => {
+            setShowModuleEditForm(false)
+            setEditingModule(null)
+          }}
+          module={editingModule}
+          onModuleUpdated={handleModuleUpdated}
+        />
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <button
@@ -138,30 +197,40 @@ export const CourseContentManager = () => {
               onReorder={handleModuleReorder}
               onEdit={handleModuleEdit}
               onDelete={handleModuleDelete}
+              onAddContent={handleAddContent}
+              onDeleteContent={handleDeleteContent}
               isEditable
+              showContent
             />
           </div>
 
           {/* Content Upload Section */}
-          {showUpload && (
+          {showUpload && selectedModule && (
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Upload Content</h2>
-                <Button variant="secondary" onClick={() => setShowUpload(false)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowUpload(false)
+                    setSelectedModule(null)
+                  }}
+                >
                   Cancel
                 </Button>
               </div>
 
               <ContentUpload
                 courseId={courseId!}
-                moduleId={selectedModule}
+                moduleId={selectedModule.id}
+                moduleName={selectedModule.title}
                 onUploadComplete={handleUploadComplete}
                 onUploadError={handleUploadError}
               />
             </div>
           )}
 
-          {!showUpload && (
+          {!showUpload && modules.length > 0 && (
             <Card>
               <div className="p-8 text-center">
                 <svg
@@ -174,14 +243,15 @@ export const CourseContentManager = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload Course Content</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Ready to Add Content
+                </h3>
                 <p className="text-gray-600 mb-4">
-                  Add videos, documents, or text content to your course
+                  Click "Add Content" on any module to upload videos, documents, or text content
                 </p>
-                <Button onClick={() => setShowUpload(true)}>Upload Content</Button>
               </div>
             </Card>
           )}
