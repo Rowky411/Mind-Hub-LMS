@@ -5,11 +5,14 @@
  */
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { ModuleList } from '@/components/courses/ModuleList'
+import EnrollButton from '@/components/enrollments/EnrollButton'
 import { getCourse } from '@/api/courses'
 import { getCourseModules } from '@/api/modules'
+import { getMyEnrollments } from '@/api/enrollments'
 import type { CourseWithInstructor, Module } from '@/types/course'
 
 export const CourseDetailsPage = () => {
@@ -42,10 +45,24 @@ export const CourseDetailsPage = () => {
     fetchCourse()
   }, [courseId])
 
-  const handleEnroll = () => {
-    // TODO: Implement enrollment when enrollment API is ready
-    console.log('Enroll in course:', courseId)
-    alert('Enrollment feature coming soon!')
+  // Check if user is enrolled in this course
+  const { data: enrollments } = useQuery({
+    queryKey: ['enrollments', 'my-courses'],
+    queryFn: getMyEnrollments,
+  })
+
+  const currentEnrollment = enrollments?.find(
+    (enrollment) => enrollment.course_id === courseId
+  )
+  const isEnrolled = !!currentEnrollment
+
+  const handleGoToCourse = () => {
+    navigate(`/courses/${courseId}/learn`)
+  }
+
+  const handleEnrollSuccess = () => {
+    // Refresh enrollments query after successful enrollment
+    navigate(`/courses/${courseId}/learn`)
   }
 
   if (isLoading) {
@@ -180,7 +197,9 @@ export const CourseDetailsPage = () => {
           {/* Enrollment Card */}
           <Card>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Enroll in Course</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {isEnrolled ? 'Your Enrollment' : 'Enroll in Course'}
+              </h3>
 
               <div className="space-y-3 mb-6">
                 {/* Enrollment Capacity */}
@@ -229,20 +248,45 @@ export const CourseDetailsPage = () => {
                     </span>
                   </div>
                 )}
+
+                {/* Progress (if enrolled) */}
+                {isEnrolled && currentEnrollment && (
+                  <div className="pt-3 border-t border-gray-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Your Progress</span>
+                      <span className="text-sm font-semibold text-blue-600">
+                        {Math.round(currentEnrollment.completion_percentage)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all"
+                        style={{ width: `${currentEnrollment.completion_percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <Button
-                onClick={handleEnroll}
-                disabled={!course.is_published}
-                className="w-full"
-              >
-                {course.is_published ? 'Enroll Now' : 'Coming Soon'}
-              </Button>
-
-              {!course.is_published && (
-                <p className="text-xs text-gray-500 mt-2 text-center">
-                  This course is not yet available for enrollment
-                </p>
+              {/* Enrollment Action */}
+              {isEnrolled ? (
+                <Button onClick={handleGoToCourse} className="w-full" size="lg">
+                  Go to Course
+                </Button>
+              ) : (
+                <>
+                  <EnrollButton
+                    courseId={courseId!}
+                    isEnrolled={isEnrolled}
+                    enrollmentId={currentEnrollment?.id}
+                    onEnrollSuccess={handleEnrollSuccess}
+                  />
+                  {!course.is_published && (
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      This course is not yet available for enrollment
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </Card>

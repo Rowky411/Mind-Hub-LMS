@@ -194,36 +194,36 @@
 
 ### Tests for User Story 3 (MANDATORY per Constitution VI) ⚠️
 
-- [ ] T102 [P] [US3] Contract test for POST /api/v1/enrollments in backend/tests/contract/test_enrollments_create.py
-- [ ] T103 [P] [US3] Contract test for GET /api/v1/enrollments/my-courses in backend/tests/contract/test_enrollments_list.py
-- [ ] T104 [P] [US3] Integration test for student enrollment journey in backend/tests/integration/test_student_enrollment_journey.py
-- [ ] T105 [P] [US3] Integration test for content access control (enrolled vs non-enrolled) in backend/tests/integration/test_content_access_control.py
-- [ ] T106 [P] [US3] Frontend component test for EnrollButton in frontend/tests/component/test_enroll_button.test.tsx
+- [X] T102 [P] [US3] Contract test for POST /api/v1/enrollments in backend/tests/contract/test_enrollments_create.py
+- [X] T103 [P] [US3] Contract test for GET /api/v1/enrollments/my-courses in backend/tests/contract/test_enrollments_list.py
+- [X] T104 [P] [US3] Integration test for student enrollment journey in backend/tests/integration/test_student_enrollment_journey.py
+- [X] T105 [P] [US3] Integration test for content access control (enrolled vs non-enrolled) in backend/tests/integration/test_content_access_control.py
+- [X] T106 [P] [US3] Frontend component test for EnrollButton in frontend/tests/component/test_enroll_button.test.tsx
 
 ### Backend Implementation for User Story 3
 
-- [ ] T107 [US3] Create Enrollment model in backend/src/models/enrollment.py (id, student_id, course_id, enrollment_date, completion_percentage, is_completed, completion_date, unenrollment_date, is_active, timestamps)
-- [ ] T108 [US3] Create Alembic migration for Enrollment table with unique constraint on (student_id, course_id) and indexes
-- [ ] T109 [US3] Create Enrollment Pydantic schemas in backend/src/schemas/enrollment.py (EnrollmentCreate, EnrollmentResponse, EnrollmentWithCourse)
-- [ ] T110 [US3] Implement enrollment service in backend/src/services/enrollment_service.py (enroll_student, unenroll_student, get_student_enrollments, check_enrollment_capacity, is_student_enrolled)
-- [ ] T111 [US3] Implement POST /api/v1/enrollments endpoint in backend/src/api/enrollments.py (student role required, capacity check, duplicate enrollment check)
-- [ ] T112 [US3] Implement GET /api/v1/enrollments/my-courses endpoint in backend/src/api/enrollments.py (return user's enrollments with course details and progress)
-- [ ] T113 [US3] Implement DELETE /api/v1/enrollments/{enrollment_id} endpoint in backend/src/api/enrollments.py (enrollment owner only)
-- [ ] T114 [US3] Implement GET /api/v1/courses/{course_id}/roster endpoint in backend/src/api/courses.py (course instructor or admin only, list enrolled students with progress)
-- [ ] T115 [US3] Add enrollment check dependency in backend/src/core/dependencies.py (verify_enrollment for content access)
-- [ ] T116 [US3] Update GET /api/v1/content/{content_id} endpoint to require enrollment check
-- [ ] T117 [US3] Add enrollment capacity validation in enrollment_service.py (prevent enrollment if course full)
+- [X] T107 [US3] Create Enrollment model in backend/src/models/enrollment.py (id, student_id, course_id, enrollment_date, completion_percentage, is_completed, completion_date, unenrollment_date, is_active, timestamps)
+- [X] T108 [US3] Create Alembic migration for Enrollment table with unique constraint on (student_id, course_id) and indexes
+- [X] T109 [US3] Create Enrollment Pydantic schemas in backend/src/schemas/enrollment.py (EnrollmentCreate, EnrollmentResponse, EnrollmentWithCourse)
+- [X] T110 [US3] Implement enrollment service in backend/src/services/enrollment_service.py (enroll_student, unenroll_student, get_student_enrollments, check_enrollment_capacity, is_student_enrolled)
+- [X] T111 [US3] Implement POST /api/v1/enrollments endpoint in backend/src/api/enrollments.py (student role required, capacity check, duplicate enrollment check)
+- [X] T112 [US3] Implement GET /api/v1/enrollments/my-courses endpoint in backend/src/api/enrollments.py (return user's enrollments with course details and progress)
+- [X] T113 [US3] Implement DELETE /api/v1/enrollments/{enrollment_id} endpoint in backend/src/api/enrollments.py (enrollment owner only)
+- [X] T114 [US3] Implement GET /api/v1/courses/{course_id}/roster endpoint in backend/src/api/courses.py (course instructor or admin only, list enrolled students with progress)
+- [X] T115 [US3] Add enrollment check dependency in backend/src/core/dependencies.py (verify_enrollment for content access)
+- [X] T116 [US3] Update GET /api/v1/content/{content_id} endpoint to require enrollment check
+- [X] T117 [US3] Add enrollment capacity validation in enrollment_service.py (prevent enrollment if course full)
 
 ### Frontend Implementation for User Story 3
 
-- [ ] T118 [P] [US3] Create enrollments API client in frontend/src/api/enrollments.ts (enrollInCourse, getMyEnrollments, unenrollFromCourse)
-- [ ] T119 [P] [US3] Create Enrollment TypeScript types in frontend/src/types/enrollment.ts (Enrollment, EnrollmentWithCourse)
-- [ ] T120 [US3] Create EnrollButton component in frontend/src/components/enrollments/EnrollButton.tsx (show "Enroll" or "Enrolled", handle enrollment action)
-- [ ] T121 [US3] Create MyCoursesPage in frontend/src/pages/student/MyCoursesPage.tsx (list enrolled courses with progress, "Continue Learning" links)
-- [ ] T122 [US3] Create CoursePlayerPage in frontend/src/pages/student/CoursePlayerPage.tsx (display course content, video player, PDF viewer, navigation)
-- [ ] T123 [US3] Update CourseDetailsPage to show EnrollButton for non-enrolled students
-- [ ] T124 [US3] Update CourseDetailsPage to show "Go to Course" button for enrolled students
-- [ ] T125 [US3] Add my courses route to StudentDashboard
+- [X] T118 [P] [US3] Create enrollments API client in frontend/src/api/enrollments.ts (enrollInCourse, getMyEnrollments, unenrollFromCourse)
+- [X] T119 [P] [US3] Create Enrollment TypeScript types in frontend/src/types/enrollment.ts (Enrollment, EnrollmentWithCourse)
+- [X] T120 [US3] Create EnrollButton component in frontend/src/components/enrollments/EnrollButton.tsx (show "Enroll" or "Enrolled", handle enrollment action)
+- [X] T121 [US3] Create MyCoursesPage in frontend/src/pages/student/MyCoursesPage.tsx (list enrolled courses with progress, "Continue Learning" links)
+- [X] T122 [US3] Create CoursePlayerPage in frontend/src/pages/student/CoursePlayerPage.tsx (display course content, video player, PDF viewer, navigation)
+- [X] T123 [US3] Update CourseDetailsPage to show EnrollButton for non-enrolled students
+- [X] T124 [US3] Update CourseDetailsPage to show "Go to Course" button for enrolled students
+- [X] T125 [US3] Add my courses route to StudentDashboard
 
 **Checkpoint**: At this point, students can enroll in courses and access content, P1 MVP features complete (Auth + Courses + Enrollment)
 

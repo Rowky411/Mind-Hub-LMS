@@ -19,7 +19,9 @@ from src.schemas.course import (
     CourseWithInstructor,
     CourseListResponse
 )
+from src.schemas.enrollment import EnrollmentStats
 from src.services.course_service import CourseService
+from src.services.enrollment_service import EnrollmentService
 from src.core.exceptions import AppException
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
@@ -255,3 +257,66 @@ async def delete_course(
     await service.delete_course(course_id, current_user.id)
 
     return None
+
+
+@router.get("/{course_id}/roster", response_model=list[EnrollmentStats])
+async def get_course_roster(
+    course_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    Get course enrollment roster with student progress.
+
+    Requires course ownership or admin role.
+    Returns list of enrolled students with their progress.
+
+    Args:
+        course_id: Course ID
+        current_user: Authenticated user (must be course instructor or admin)
+        db: Database session
+
+    Returns:
+        List[EnrollmentStats]: Enrolled students with progress details
+
+    Raises:
+        404: Course not found
+        403: Not authorized to view roster
+    """
+    # Verify course exists and user has permission
+    service = CourseService(db)
+    course = await service.get_course_by_id(course_id)
+
+    if not course:
+        raise AppException(
+            status_code=404,
+            message="Course not found",
+            details={"course_id": course_id}
+        )
+
+    # Check authorization: must be course instructor or admin
+    if course.instructor_id != current_user.id and not current_user.is_admin:
+        raise AppException(
+            status_code=403,
+            message="Not authorized to view course roster",
+            details={"course_id": course_id}
+        )
+
+    # Get enrollments with student details
+    enrollments = await EnrollmentService.get_course_roster(db, course_id)
+
+    # Map to EnrollmentStats schema
+    roster_stats = []
+    for enrollment in enrollments:
+        stats = EnrollmentStats(
+            student_id=enrollment.student_id,
+            student_name=enrollment.student.full_name,
+            student_email=enrollment.student.email,
+            enrollment_date=enrollment.enrollment_date,
+            completion_percentage=enrollment.completion_percentage,
+            is_completed=enrollment.is_completed,
+            last_activity=enrollment.updated_at,
+        )
+        roster_stats.append(stats)
+
+    return roster_stats

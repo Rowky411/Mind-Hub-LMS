@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from src.models.user import User
     from src.models.module import Module
     from src.models.content_item import ContentItem
+    from src.models.enrollment import Enrollment
 
 
 class CourseVisibility(str, PyEnum):
@@ -68,6 +69,12 @@ class Course(Base):
     )
     content_items: Mapped[list["ContentItem"]] = relationship(
         "ContentItem",
+        back_populates="course",
+        cascade="all, delete-orphan"
+    )
+    enrollments: Mapped[list["Enrollment"]] = relationship(
+        "Enrollment",
+        foreign_keys="[Enrollment.course_id]",
         back_populates="course",
         cascade="all, delete-orphan"
     )

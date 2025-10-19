@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS
-    CORS_ORIGINS: Union[List[str], str] = "http://localhost:5173,http://localhost:3000"
+    CORS_ORIGINS: Union[List[str], str] = "http://localhost:5173,http://localhost:5174,http://localhost:3000"
     ALLOWED_HOSTS: Union[List[str], str] = "localhost,127.0.0.1"
 
     @field_validator("CORS_ORIGINS", "ALLOWED_HOSTS", mode="before")

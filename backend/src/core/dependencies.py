@@ -12,6 +12,7 @@ from src.core.database import get_session
 from src.core.exceptions import AuthenticationError
 from src.models.user import User, UserRole
 from src.services.auth_service import AuthService
+from src.services.enrollment_service import EnrollmentService
 
 
 # OAuth2 scheme for JWT bearer tokens
@@ -198,3 +199,56 @@ def require_enrollment(user: User, enrollment_user_id: str) -> bool:
         )
 
     return True
+
+
+async def verify_enrollment(
+    course_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> User:
+    """
+    Verify that the current user is enrolled in a course.
+
+    Used as a dependency for content access endpoints to ensure only
+    enrolled students (or course instructors/admins) can access content.
+
+    Args:
+        course_id: Course ID to check enrollment for
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        User: Current user if enrolled or authorized
+
+    Raises:
+        HTTPException: If user is not enrolled and not authorized
+    """
+    # Admins can access all content
+    if current_user.is_admin:
+        return current_user
+
+    # Check if user is the course instructor
+    from src.models.course import Course
+    from sqlalchemy import select
+
+    course_query = select(Course).where(Course.id == course_id)
+    result = await db.execute(course_query)
+    course = result.scalar_one_or_none()
+
+    if course and str(course.instructor_id) == str(current_user.id):
+        return current_user
+
+    # Check if student is enrolled
+    is_enrolled = await EnrollmentService.is_student_enrolled(
+        db=db,
+        student_id=current_user.id,
+        course_id=course_id,
+    )
+
+    if not is_enrolled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not enrolled in this course",
+        )
+
+    return current_user

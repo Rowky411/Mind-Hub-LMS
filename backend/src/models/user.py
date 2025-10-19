@@ -13,6 +13,7 @@ from src.models.base import Base
 
 if TYPE_CHECKING:
     from src.models.course import Course
+    from src.models.enrollment import Enrollment
 
 
 class UserRole(str, PyEnum):
@@ -65,6 +66,12 @@ class User(Base):
     courses: Mapped[list["Course"]] = relationship(
         "Course",
         back_populates="instructor",
+        cascade="all, delete-orphan"
+    )
+    enrollments: Mapped[list["Enrollment"]] = relationship(
+        "Enrollment",
+        foreign_keys="[Enrollment.student_id]",
+        back_populates="student",
         cascade="all, delete-orphan"
     )
 

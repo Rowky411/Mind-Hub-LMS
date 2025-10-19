@@ -19,6 +19,8 @@ import { EditCoursePage } from '@/pages/instructor/EditCoursePage'
 import { CourseContentManager } from '@/pages/instructor/CourseContentManager'
 import { CourseCatalog } from '@/pages/student/CourseCatalog'
 import { CourseDetailsPage } from '@/pages/student/CourseDetailsPage'
+import { MyCoursesPage } from '@/pages/student/MyCoursesPage'
+import { CoursePlayerPage } from '@/pages/student/CoursePlayerPage'
 
 /**
  * Protected route wrapper that requires authentication.
@@ -164,6 +166,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CourseDetailsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-courses"
+              element={
+                <ProtectedRoute>
+                  <MyCoursesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/learn"
+              element={
+                <ProtectedRoute>
+                  <CoursePlayerPage />
                 </ProtectedRoute>
               }
             />
