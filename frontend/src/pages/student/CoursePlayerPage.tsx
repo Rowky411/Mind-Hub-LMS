@@ -7,30 +7,157 @@
  * - Read documents
  * - Track progress
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getCourse } from '@/api/courses'
+import { getCourseModules } from '@/api/modules'
+import { getModuleContent } from '@/api/content'
+import { VideoPlayer } from '@/components/player/VideoPlayer'
 import { Button } from '@/components/ui/Button'
+import type { Module, ContentItem, ContentType } from '@/types/course'
+
+interface ModuleWithContent extends Module {
+  content: ContentItem[]
+}
 
 export const CoursePlayerPage = () => {
   const { courseId } = useParams<{ courseId: string }>()
   const navigate = useNavigate()
-  const [selectedContentId, setSelectedContentId] = useState<string | null>(null)
+  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null)
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
 
+  // Fetch course details
   const {
     data: course,
-    isLoading,
-    error,
+    isLoading: isLoadingCourse,
+    error: courseError,
   } = useQuery({
     queryKey: ['courses', courseId],
     queryFn: () => getCourse(courseId!),
     enabled: !!courseId,
   })
 
+  // Fetch modules
+  const {
+    data: modules,
+    isLoading: isLoadingModules,
+  } = useQuery({
+    queryKey: ['modules', courseId],
+    queryFn: () => getCourseModules(courseId!),
+    enabled: !!courseId,
+  })
+
+  // Fetch content for all modules
+  const {
+    data: modulesWithContent,
+    isLoading: isLoadingContent,
+  } = useQuery({
+    queryKey: ['course-content', courseId],
+    queryFn: async () => {
+      if (!modules) return []
+
+      const modulesWithContent: ModuleWithContent[] = await Promise.all(
+        modules.map(async (module) => {
+          const content = await getModuleContent(module.id)
+          return { ...module, content }
+        })
+      )
+      return modulesWithContent
+    },
+    enabled: !!modules && modules.length > 0,
+  })
+
+  // Auto-select first video content when modules load
+  useEffect(() => {
+    if (modulesWithContent && modulesWithContent.length > 0 && !selectedContent) {
+      // Find first video content
+      for (const module of modulesWithContent) {
+        const firstVideo = module.content.find((item) => item.content_type === 'video')
+        if (firstVideo) {
+          setSelectedContent(firstVideo)
+          setExpandedModules(new Set([module.id]))
+          break
+        }
+      }
+    }
+  }, [modulesWithContent, selectedContent])
+
   const handleBackToCourses = () => {
     navigate('/my-courses')
   }
+
+  const toggleModule = (moduleId: string) => {
+    const newExpanded = new Set(expandedModules)
+    if (newExpanded.has(moduleId)) {
+      newExpanded.delete(moduleId)
+    } else {
+      newExpanded.add(moduleId)
+    }
+    setExpandedModules(newExpanded)
+  }
+
+  const handleContentSelect = (content: ContentItem) => {
+    setSelectedContent(content)
+  }
+
+  const getContentIcon = (contentType: ContentType) => {
+    switch (contentType) {
+      case 'video':
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        )
+      case 'document':
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+        )
+      case 'text':
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h7"
+            />
+          </svg>
+        )
+      default:
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+            />
+          </svg>
+        )
+    }
+  }
+
+  const isLoading = isLoadingCourse || isLoadingModules || isLoadingContent
+  const error = courseError
 
   if (!courseId) {
     return (
@@ -99,14 +226,51 @@ export const CoursePlayerPage = () => {
       {!isLoading && course && (
         <div className="flex-1 flex overflow-hidden">
           {/* Content Player - Left Side (2/3) */}
-          <div className="flex-1 bg-gray-900 flex items-center justify-center">
-            {selectedContentId ? (
-              <div className="text-white">
-                {/* Video/Document player will go here */}
-                <p>Content player for ID: {selectedContentId}</p>
-                <p className="text-sm text-gray-400 mt-2">
-                  Video and document players coming in next phase
-                </p>
+          <div className="flex-1 bg-gray-900 flex items-center justify-center p-6">
+            {selectedContent ? (
+              <div className="w-full max-w-5xl">
+                {selectedContent.content_type === 'video' && selectedContent.file_url ? (
+                  <VideoPlayer videoUrl={selectedContent.file_url} title={selectedContent.title} />
+                ) : selectedContent.content_type === 'document' && selectedContent.file_url ? (
+                  <div className="bg-white rounded-lg p-6">
+                    <h3 className="text-xl font-bold mb-4">{selectedContent.title}</h3>
+                    {selectedContent.description && (
+                      <p className="text-gray-600 mb-4">{selectedContent.description}</p>
+                    )}
+                    <a
+                      href={selectedContent.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      <svg
+                        className="w-5 h-5 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                        />
+                      </svg>
+                      Download Document
+                    </a>
+                  </div>
+                ) : selectedContent.content_type === 'text' && selectedContent.text_content ? (
+                  <div className="bg-white rounded-lg p-6 max-h-full overflow-y-auto">
+                    <h3 className="text-xl font-bold mb-4">{selectedContent.title}</h3>
+                    <div className="prose max-w-none">
+                      <p className="whitespace-pre-wrap">{selectedContent.text_content}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-white text-center">
+                    <p>Content type not supported or content unavailable</p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center text-gray-400 p-8">
@@ -144,34 +308,35 @@ export const CoursePlayerPage = () => {
                 <p className="text-sm text-gray-600">{course.description}</p>
               </div>
 
-              {/* Placeholder for modules and content */}
-              <div className="space-y-4">
-                <div className="text-sm text-gray-500">
-                  <p>Modules and content items will be displayed here.</p>
-                  <p className="mt-2">
-                    This requires the modules and content items to be loaded from the API.
-                  </p>
-                  <p className="mt-2 text-xs">
-                    Note: Full course content structure (modules, videos, documents) will be
-                    integrated in the next development phase.
-                  </p>
-                </div>
-
-                {/* Example module structure (placeholder) */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">Example Module</h3>
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => setSelectedContentId('example-1')}
-                      className={`w-full text-left px-3 py-2 rounded-md text-sm ${
-                        selectedContentId === 'example-1'
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-center">
+              {/* Modules and Content */}
+              {modulesWithContent && modulesWithContent.length > 0 ? (
+                <div className="space-y-3">
+                  {modulesWithContent.map((module, moduleIndex) => (
+                    <div key={module.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                      {/* Module Header */}
+                      <button
+                        onClick={() => toggleModule(module.id)}
+                        className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-semibold text-gray-500">
+                            {moduleIndex + 1}
+                          </span>
+                          <div className="text-left">
+                            <h3 className="font-semibold text-gray-900 text-sm">
+                              {module.title}
+                            </h3>
+                            {module.description && (
+                              <p className="text-xs text-gray-600 mt-1 line-clamp-1">
+                                {module.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                         <svg
-                          className="w-4 h-4 mr-2"
+                          className={`w-5 h-5 text-gray-500 transition-transform ${
+                            expandedModules.has(module.id) ? 'rotate-180' : ''
+                          }`}
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -180,21 +345,82 @@ export const CoursePlayerPage = () => {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            d="M19 9l-7 7-7-7"
                           />
                         </svg>
-                        <span>Example Lesson (Placeholder)</span>
-                      </div>
-                    </button>
-                  </div>
+                      </button>
+
+                      {/* Module Content Items */}
+                      {expandedModules.has(module.id) && (
+                        <div className="divide-y divide-gray-100">
+                          {module.content.length > 0 ? (
+                            module.content.map((content) => (
+                              <button
+                                key={content.id}
+                                onClick={() => handleContentSelect(content)}
+                                className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
+                                  selectedContent?.id === content.id
+                                    ? 'bg-blue-50 border-l-4 border-blue-600'
+                                    : ''
+                                }`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div
+                                    className={`mt-0.5 ${
+                                      selectedContent?.id === content.id
+                                        ? 'text-blue-600'
+                                        : 'text-gray-500'
+                                    }`}
+                                  >
+                                    {getContentIcon(content.content_type)}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p
+                                      className={`text-sm font-medium ${
+                                        selectedContent?.id === content.id
+                                          ? 'text-blue-900'
+                                          : 'text-gray-900'
+                                      }`}
+                                    >
+                                      {content.title}
+                                    </p>
+                                    {content.duration_seconds && (
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        {Math.floor(content.duration_seconds / 60)} min
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-sm text-gray-500 italic">
+                              No content available
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <div className="text-center p-8 text-gray-500">
+                  <svg
+                    className="w-12 h-12 mx-auto mb-3 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <p className="text-sm">No modules available yet</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

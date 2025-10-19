@@ -29,10 +29,32 @@ export const MyCoursesPage = () => {
     navigate('/courses')
   }
 
+  const handleBackToDashboard = () => {
+    navigate('/dashboard')
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
+        <div className="flex items-center gap-4 mb-4">
+          <Button variant="ghost" size="sm" onClick={handleBackToDashboard}>
+            <svg
+              className="w-5 h-5 mr-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Back to Dashboard
+          </Button>
+        </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">My Courses</h1>
         <p className="text-gray-600">Continue learning from where you left off</p>
       </div>
